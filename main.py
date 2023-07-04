@@ -1,5 +1,5 @@
 from machine import Pin, reset, unique_id
-import time, dht, network, socket, binascii, private
+import time, dht, network, binascii, private
 from lib.umqtt import MQTTClient
 
 led = Pin("LED", Pin.OUT)
@@ -24,17 +24,6 @@ def connect_wifi():
     print("Connected to WIFI: " + private.NEWWORK_SSID + " (" + str(wifi.ifconfig()[0]) + ")")
     return wifi.ifconfig()[0]
 
-def open_socket(ip):
-    adress = (ip, 80)
-    connection = socket.socket()
-    connection.setsockopt(socket.AF_INET, socket.SO_REUSEADDR, 1)
-    connection.bind(adress)
-    connection.listen(1)
-    return connection
-
-def callback(topic, msg):
-    print("Topic: {}\nMessage: {}".format(topic, msg))
-
 def connect_mqtt():
     print("Attempting to connect to MQTT Broker")
     client = MQTTClient(
@@ -55,13 +44,11 @@ def connect_mqtt():
 
 def main():
     try:
-        ip = connect_wifi()
-        connection = open_socket(ip)
+        connect_wifi()
         mqtt_client = connect_mqtt()
 
         while True:
             temperature, humidity = get_readings()
-
             if temperature is None:
                 print("Error: No temperature output to measure.")
             else:
@@ -69,12 +56,6 @@ def main():
 
             mqtt_client.publish(    private.TEMPERATURE_FEED,    str(temperature).encode()    )
             mqtt_client.publish(    private.HUMIDITY_FEED,       str(humidity).encode()       )
-            try:
-                mqtt_client.check_msg()
-            except:
-                print("Error: mqtt_client.check_msg() exception.")
-                mqtt_client.disconnect()
-                reset()
 
             flash_led(led)
             time.sleep(60)
